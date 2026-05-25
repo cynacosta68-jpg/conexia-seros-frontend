@@ -115,6 +115,39 @@
   .flex-row { display: flex; align-items: center; justify-content: space-between;
               flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
 
+  /* ── Partes ── */
+  .partes-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-top:.5rem; }
+  .parte-card { border: 2px solid var(--borde); border-radius: 10px; padding: 1rem;
+                background: var(--fondo); }
+  .parte-card h3 { font-size:.9rem; font-weight:700; margin-bottom:.3rem; color:#475569; }
+  .parte-card .rango { font-size:.78rem; color:var(--gris); margin-bottom:.75rem; }
+  .parte-card .btn-parte { width:100%; padding:.65rem; font-size:.88rem; font-weight:600;
+                            border-radius:7px; border:none; cursor:pointer; transition:all .2s; }
+  .btn-parte.idle    { background:var(--azul); color:white; }
+  .btn-parte.idle:hover { background:#1d4ed8; }
+  .btn-parte.running { background:#fef3c7; color:#92400e; cursor:not-allowed; }
+  .btn-parte.done    { background:#dcfce7; color:#166534; cursor:not-allowed; }
+  .btn-parte.error   { background:#fee2e2; color:#991b1b; cursor:pointer; }
+  .btn-parte:disabled { opacity:.5; cursor:not-allowed; }
+  .parte-metrics { display:flex; gap:.5rem; margin-top:.6rem; }
+  .pm { flex:1; text-align:center; padding:.4rem; background:white;
+        border-radius:6px; border:1px solid var(--borde); }
+  .pm .v { font-size:1.2rem; font-weight:700; }
+  .pm .l { font-size:.7rem; color:var(--gris); }
+
+  .btn-unif { background:#7c3aed; color:white; font-size:.82rem; padding:.4rem .9rem;
+              border-radius:7px; border:none; cursor:pointer; font-weight:600; }
+  .btn-unif:hover:not(:disabled) { background:#6d28d9; }
+  .btn-unif:disabled { opacity:.4; cursor:not-allowed; }
+
+  .log-tab { background:#f1f5f9; color:var(--gris); font-size:.78rem;
+             padding:.3rem .7rem; border:1px solid var(--borde); border-radius:5px; cursor:pointer; }
+  .active-tab { background:var(--azul); color:white; border-color:var(--azul); }
+
+  .partes-dl { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-top:.75rem; }
+  .parte-dl-card { border:1px solid var(--borde); border-radius:8px; padding:.75rem; }
+  .parte-dl-card h4 { font-size:.8rem; font-weight:600; margin-bottom:.5rem; color:#475569; }
+
   /* ── Login overlay ── */
   #login-overlay {
     position: fixed; inset: 0; background: rgba(15,23,42,.85);
@@ -184,67 +217,72 @@
     <div id="upload-status"></div>
   </div>
 
-  <!-- 2. Ejecución -->
+  <!-- 2. Ejecución por partes -->
   <div class="card">
     <div class="flex-row">
       <h2 style="margin-bottom:0">2. Ejecución</h2>
       <div style="display:flex;align-items:center;gap:.75rem">
-        <span id="estado-badge" class="badge idle">⚪ En espera</span>
         <button id="notif-btn" onclick="pedirNotificacion()">🔔 Notificarme</button>
+        <button id="btn-unif" class="btn-unif" disabled onclick="unificar()">
+          🔗 Unificar resultados
+        </button>
       </div>
     </div>
-    <button id="btn-run" disabled onclick="iniciarEjecucion()">
-      🚀 Iniciar extracción
-    </button>
-    <div class="progress-bar" id="progress-bar" style="display:none">
-      <div class="progress-fill" id="progress-fill"></div>
-    </div>
-    <div class="metrics" style="margin-top:1rem">
-      <div class="metric verde"><div class="valor" id="m-ok">—</div><div class="label">Descargados</div></div>
-      <div class="metric rojo"> <div class="valor" id="m-err">—</div><div class="label">Fallidos</div></div>
-      <div class="metric azul"> <div class="valor" id="m-tiempo">—</div><div class="label">Tiempo</div></div>
+
+    <!-- 3 bloques de partes -->
+    <div class="partes-grid" id="partes-grid">
+      <!-- generado dinámicamente por JS -->
     </div>
   </div>
 
   <!-- 3. Log -->
   <div class="card">
-    <h2>3. Log en tiempo real</h2>
+    <div class="flex-row" style="margin-bottom:.5rem">
+      <h2 style="margin-bottom:0">3. Log en tiempo real</h2>
+      <div style="display:flex;gap:.5rem">
+        <button onclick="verLogParte(1)" id="log-btn-1" class="log-tab active-tab">Parte 1</button>
+        <button onclick="verLogParte(2)" id="log-btn-2" class="log-tab">Parte 2</button>
+        <button onclick="verLogParte(3)" id="log-btn-3" class="log-tab">Parte 3</button>
+      </div>
+    </div>
     <div id="log-box">Esperando inicio de ejecución...</div>
   </div>
 
   <!-- 4. Descargas -->
   <div class="card">
-    <h2>4. Resultados</h2>
+    <h2>4. Resultados unificados</h2>
     <div class="downloads">
-      <div class="dl-btn disabled" id="dl-excel" onclick="descargar('excel')">
+      <div class="dl-btn disabled" id="dl-unif-excel" onclick="descargarUnif('excel')">
         <span class="icon">📊</span>
         <span class="name">Excel consolidado</span>
-        <span class="desc">Detalle + Totalizador</span>
+        <span class="desc">Todas las partes</span>
       </div>
-      <div class="dl-btn disabled" id="dl-pdfs" onclick="descargar('pdfs')">
+      <div class="dl-btn disabled" id="dl-unif-pdfs" onclick="descargarUnif('pdfs')">
         <span class="icon">📦</span>
         <span class="name">PDFs (ZIP)</span>
         <span class="desc">Todos los reportes</span>
       </div>
-      <div class="dl-btn disabled" id="dl-fall" onclick="descargar('fallidos')">
-        <span class="icon">❌</span>
-        <span class="name">Fallidos</span>
-        <span class="desc">Credenciales inválidas</span>
-      </div>
+    </div>
+
+    <h2 style="margin-top:1.5rem">Descarga por parte</h2>
+    <div class="partes-dl" id="partes-dl">
+      <!-- generado dinámicamente -->
     </div>
   </div>
 
 </div>
 
 <script>
-// ── CONFIG — cambiar por la URL real de PikaPods ─────────────────────────────
+// ── CONFIG ────────────────────────────────────────────────────────────────────
 const API = (window.API_URL || "https://conexia-seros-backend-production.up.railway.app").replace(/\/$/, "");
 
 // ── Estado ────────────────────────────────────────────────────────────────────
-let pollInterval  = null;
-let notifActiva   = false;
-let tiempoInicio  = null;
-let excelSubido   = false;
+let pollInterval = null;
+let notifActiva  = false;
+let excelSubido  = false;
+let logParteActual = 1;
+let tiempos = {1: null, 2: null, 3: null};
+let partesInfo = [{parte:1,desde:1,hasta:40},{parte:2,desde:41,hasta:80},{parte:3,desde:81,hasta:119}];
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // DOMContentLoaded manejado por el bloque de login al final
@@ -277,36 +315,87 @@ async function subirExcel(file) {
     const d = await r.json();
     if (r.ok) {
       status.style.color = "#16a34a";
-      status.textContent = `✅ ${file.name} cargado — ${d.registros} registros`;
+      status.textContent = `✅ ${file.name} — ${d.registros} registros`;
       excelSubido = true;
-      actualizarBoton();
+      if (d.partes) {
+        partesInfo = d.partes;
+        renderPartes();
+      }
     } else {
       status.style.color = "#dc2626";
-      status.textContent = "❌ Error: " + (d.detail || "desconocido");
+      status.textContent = "❌ " + (d.detail || "Error");
     }
   } catch(e) {
     status.style.color = "#dc2626";
-    status.textContent = "❌ No se pudo conectar con el servidor";
+    status.textContent = "❌ Sin conexión con el servidor";
   }
 }
 
-// ── Ejecución ─────────────────────────────────────────────────────────────────
-async function iniciarEjecucion() {
+// ── Renderizar bloques de partes ──────────────────────────────────────────────
+function renderPartes() {
+  const grid = document.getElementById("partes-grid");
+  const dlGrid = document.getElementById("partes-dl");
+  grid.innerHTML = "";
+  dlGrid.innerHTML = "";
+
+  partesInfo.forEach(p => {
+    const cant = p.hasta - p.desde + 1;
+    // Bloque de ejecución
+    grid.innerHTML += `
+      <div class="parte-card" id="parte-card-${p.parte}">
+        <h3>Parte ${p.parte}</h3>
+        <div class="rango">Registros ${p.desde} al ${p.hasta} (${cant} prestadores)</div>
+        <button class="btn-parte idle" id="btn-parte-${p.parte}"
+                onclick="iniciarParte(${p.parte})" ${!excelSubido ? "disabled" : ""}>
+          🚀 Ejecutar parte ${p.parte}
+        </button>
+        <div class="parte-metrics">
+          <div class="pm"><div class="v verde" id="ok-${p.parte}">—</div><div class="l">OK</div></div>
+          <div class="pm"><div class="v rojo"  id="err-${p.parte}">—</div><div class="l">Fallidos</div></div>
+          <div class="pm"><div class="v azul"  id="tiempo-${p.parte}">—</div><div class="l">Tiempo</div></div>
+        </div>
+      </div>`;
+
+    // Bloque de descarga por parte
+    dlGrid.innerHTML += `
+      <div class="parte-dl-card">
+        <h4>Parte ${p.parte} (${p.desde}-${p.hasta})</h4>
+        <div style="display:flex;flex-direction:column;gap:.4rem">
+          <div class="dl-btn disabled" id="dl-${p.parte}-excel"
+               onclick="descargarParte(${p.parte},'excel')" style="flex-direction:row;gap:.4rem;padding:.6rem">
+            <span>📊</span><span style="font-size:.8rem">Excel</span>
+          </div>
+          <div class="dl-btn disabled" id="dl-${p.parte}-pdfs"
+               onclick="descargarParte(${p.parte},'pdfs')" style="flex-direction:row;gap:.4rem;padding:.6rem">
+            <span>📦</span><span style="font-size:.8rem">PDFs</span>
+          </div>
+          <div class="dl-btn disabled" id="dl-${p.parte}-fallidos"
+               onclick="descargarParte(${p.parte},'fallidos')" style="flex-direction:row;gap:.4rem;padding:.6rem">
+            <span>❌</span><span style="font-size:.8rem">Fallidos</span>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+// ── Iniciar una parte ─────────────────────────────────────────────────────────
+async function iniciarParte(parte) {
   try {
-    const r = await fetch(`${API}/run`, { method: "POST" });
+    const r = await fetch(`${API}/run/${parte}`, { method: "POST" });
     const d = await r.json();
-    if (!r.ok) { mostrarToast("❌ " + (d.detail || "Error al iniciar"), true); return; }
-    tiempoInicio = Date.now();
-    document.getElementById("progress-bar").style.display = "block";
+    if (!r.ok) { mostrarToast("❌ " + (d.detail || "Error"), true); return; }
+    tiempos[parte] = Date.now();
+    verLogParte(parte);
     iniciarPolling();
+    mostrarToast(`▶ Parte ${parte} iniciada (registros ${d.desde}-${d.hasta})`);
   } catch(e) {
-    mostrarToast("❌ Sin conexión con el servidor", true);
+    mostrarToast("❌ Sin conexión", true);
   }
 }
 
 // ── Polling ───────────────────────────────────────────────────────────────────
 function iniciarPolling() {
-  if (pollInterval) clearInterval(pollInterval);
+  if (pollInterval) return; // ya está corriendo
   pollInterval = setInterval(verificarEstado, 4000);
 }
 
@@ -314,113 +403,161 @@ async function verificarEstado() {
   try {
     const r = await fetch(`${API}/status`);
     const d = await r.json();
-    actualizarUI(d);
-    if (d.status === "done" || d.status === "error") {
+
+    if (d.excel_ok && !excelSubido) { excelSubido = true; }
+    if (d.partes_info && partesInfo.length === 0) {
+      partesInfo = d.partes_info;
+      renderPartes();
+    }
+
+    let alguna_corriendo = false;
+    let todas_done = true;
+
+    for (const [p, e] of Object.entries(d.partes || {})) {
+      const parte = parseInt(p);
+      const btn = document.getElementById(`btn-parte-${parte}`);
+      if (btn) {
+        btn.className = `btn-parte ${e.status}`;
+        btn.disabled = e.status === "running" || e.status === "done";
+        if (e.status === "running") {
+          const seg = tiempos[parte] ? Math.floor((Date.now()-tiempos[parte])/1000) : 0;
+          btn.textContent = `⏳ Ejecutando... ${Math.floor(seg/60).toString().padStart(2,"0")}:${(seg%60).toString().padStart(2,"0")}`;
+          alguna_corriendo = true;
+        } else if (e.status === "done") {
+          btn.textContent = `✅ Parte ${parte} completada`;
+          habilitarDescargasParte(parte);
+        } else if (e.status === "error") {
+          btn.textContent = `🔴 Error — reintentar parte ${parte}`;
+          btn.disabled = false;
+        } else {
+          todas_done = false;
+        }
+      }
+      // Métricas
+      if (document.getElementById(`ok-${parte}`))
+        document.getElementById(`ok-${parte}`).textContent = e.ok ?? "—";
+      if (document.getElementById(`err-${parte}`))
+        document.getElementById(`err-${parte}`).textContent = e.fallidos ?? "—";
+      if (document.getElementById(`tiempo-${parte}`) && e.inicio && e.fin) {
+        const ms = new Date(e.fin) - new Date(e.inicio);
+        const min = Math.floor(ms/60000).toString().padStart(2,"0");
+        const s   = Math.floor((ms%60000)/1000).toString().padStart(2,"0");
+        document.getElementById(`tiempo-${parte}`).textContent = `${min}:${s}`;
+      }
+
+      // Actualizar log si es la parte visible
+      if (parseInt(p) === logParteActual && e.log_tail && e.log_tail.length) {
+        actualizarLog(e.log_tail);
+      }
+
+      if (e.status !== "done" && e.status !== "error") todas_done = false;
+    }
+
+    // Habilitar botón de unificar si al menos 1 parte terminó
+    const alguna_done = Object.values(d.partes || {}).some(e => e.status === "done");
+    document.getElementById("btn-unif").disabled = !alguna_done;
+
+    // Si todas terminaron y ninguna corre, parar polling
+    if (!alguna_corriendo) {
       clearInterval(pollInterval);
       pollInterval = null;
-      if (d.status === "done") {
-        onEjecucionCompleta();
-      } else {
-        mostrarToast("❌ La ejecución terminó con errores", true);
+      if (alguna_done) {
+        notificarNavegador();
+        sonidoCompletado();
+        mostrarToast("✅ ¡Ejecución completada! Podés unificar los resultados.");
       }
     }
-    if (d.excel_ok) { excelSubido = true; actualizarBoton(); }
   } catch(e) { /* silencioso */ }
 }
 
-function actualizarUI(d) {
-  // Badge
-  const badge = document.getElementById("estado-badge");
-  const badges = { idle:"⚪ En espera", running:"🟡 Ejecutando...", done:"🟢 Completado", error:"🔴 Error" };
-  const clases = { idle:"idle", running:"running", done:"done", error:"error" };
-  badge.className = "badge " + (clases[d.status] || "idle");
-  badge.textContent = badges[d.status] || d.status;
-
-  // Botón
-  actualizarBoton(d.status);
-
-  // Métricas
-  if (d.ok !== undefined)      document.getElementById("m-ok").textContent  = d.ok;
-  if (d.fallidos !== undefined) document.getElementById("m-err").textContent = d.fallidos;
-
-  // Tiempo
-  if (d.status === "running" && tiempoInicio) {
-    const seg = Math.floor((Date.now() - tiempoInicio) / 1000);
-    const min = Math.floor(seg / 60).toString().padStart(2,"0");
-    const s   = (seg % 60).toString().padStart(2,"0");
-    document.getElementById("m-tiempo").textContent = `${min}:${s}`;
-  } else if (d.inicio && d.fin) {
-    const ms  = new Date(d.fin) - new Date(d.inicio);
-    const min = Math.floor(ms/60000).toString().padStart(2,"0");
-    const s   = Math.floor((ms%60000)/1000).toString().padStart(2,"0");
-    document.getElementById("m-tiempo").textContent = `${min}:${s}`;
-  }
-
-  // Log
-  if (d.log_tail && d.log_tail.length) actualizarLog(d.log_tail);
-
-  // Progress bar
-  if (d.status === "done" || d.status === "error") {
-    document.getElementById("progress-fill").style.animation = "none";
-    document.getElementById("progress-fill").style.width = "100%";
-    document.getElementById("progress-fill").style.background =
-      d.status === "done" ? "#16a34a" : "#dc2626";
-  }
-}
-
-function actualizarBoton(status) {
-  const btn = document.getElementById("btn-run");
-  btn.disabled = !excelSubido || status === "running";
-  btn.textContent = status === "running" ? "⏳ Ejecutando..." : "🚀 Iniciar extracción";
-}
-
 // ── Log ───────────────────────────────────────────────────────────────────────
-let logLines = [];
-function actualizarLog(nuevas) {
-  nuevas.forEach(l => {
-    if (!logLines.includes(l)) logLines.push(l);
+const logsPorParte = {1:[], 2:[], 3:[]};
+
+function verLogParte(parte) {
+  logParteActual = parte;
+  [1,2,3].forEach(p => {
+    document.getElementById(`log-btn-${p}`).className =
+      "log-tab" + (p === parte ? " active-tab" : "");
   });
-  if (logLines.length > 300) logLines = logLines.slice(-300);
   const box = document.getElementById("log-box");
-  box.innerHTML = logLines.map(l => {
-    const esc = l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    if (l.includes("✓") || l.includes("OK"))             return `<span class="ok">${esc}</span>`;
-    if (l.includes("ERROR") || l.includes("Credencial")) return `<span class="error">${esc}</span>`;
-    if (l.includes("WARNING") || l.includes("⚠"))        return `<span class="warn">${esc}</span>`;
-    return esc;
-  }).join("\n");
+  box.innerHTML = logsPorParte[parte].map(formatLine).join("\n");
   box.scrollTop = box.scrollHeight;
 }
 
+function formatLine(l) {
+  const esc = l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  if (l.includes("✓") || l.includes("OK"))              return `<span class="ok">${esc}</span>`;
+  if (l.includes("ERROR") || l.includes("Credencial"))  return `<span class="error">${esc}</span>`;
+  if (l.includes("WARNING") || l.includes("TIMEOUT"))   return `<span class="warn">${esc}</span>`;
+  return esc;
+}
+
+function actualizarLog(nuevas) {
+  const logs = logsPorParte[logParteActual];
+  nuevas.forEach(l => { if (!logs.slice(-10).includes(l)) logs.push(l); });
+  if (logs.length > 300) logsPorParte[logParteActual] = logs.slice(-300);
+  if (logParteActual === logParteActual) {
+    const box = document.getElementById("log-box");
+    box.innerHTML = logsPorParte[logParteActual].map(formatLine).join("\n");
+    box.scrollTop = box.scrollHeight;
+  }
+}
+
+// ── Descargas ─────────────────────────────────────────────────────────────────
+function habilitarDescargasParte(parte) {
+  ["excel","pdfs","fallidos"].forEach(tipo => {
+    const el = document.getElementById(`dl-${parte}-${tipo}`);
+    if (el) el.classList.remove("disabled");
+  });
+}
+
+async function descargarParte(parte, tipo) {
+  window.open(`${API}/download/${parte}/${tipo}`, "_blank");
+}
+
+async function descargarUnif(tipo) {
+  window.open(`${API}/download/unificado/${tipo}`, "_blank");
+}
+
+// ── Unificar ──────────────────────────────────────────────────────────────────
+async function unificar() {
+  const btn = document.getElementById("btn-unif");
+  btn.textContent = "⏳ Unificando...";
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/unificar`, { method: "POST" });
+    const d = await r.json();
+    if (r.ok) {
+      mostrarToast(`✅ Unificado: ${d.pdfs} PDFs, Excel generado`);
+      document.getElementById("dl-unif-excel").classList.remove("disabled");
+      document.getElementById("dl-unif-pdfs").classList.remove("disabled");
+      btn.textContent = "✅ Unificado";
+    } else {
+      mostrarToast("❌ " + (d.detail || "Error al unificar"), true);
+      btn.disabled = false;
+      btn.textContent = "🔗 Unificar resultados";
+    }
+  } catch(e) {
+    mostrarToast("❌ Error de conexión", true);
+    btn.disabled = false;
+    btn.textContent = "🔗 Unificar resultados";
+  }
+}
+
 // ── Completado ────────────────────────────────────────────────────────────────
-function onEjecucionCompleta() {
-  mostrarToast("✅ Extracción completada. ¡Ya podés descargar los resultados!");
-  habilitarDescargas();
-  notificarNavegador();
-  // Sonido de notificación
+function sonidoCompletado() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     [523, 659, 784].forEach((hz, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
+      const o = ctx.createOscillator(), g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
       o.frequency.value = hz;
-      g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
-      o.start(ctx.currentTime + i * 0.15);
-      o.stop(ctx.currentTime + i * 0.15 + 0.3);
+      g.gain.setValueAtTime(0.3, ctx.currentTime + i*.15);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*.15 + .3);
+      o.start(ctx.currentTime + i*.15);
+      o.stop(ctx.currentTime + i*.15 + .3);
     });
   } catch(e) {}
-}
-
-function habilitarDescargas() {
-  ["dl-excel","dl-pdfs","dl-fall"].forEach(id =>
-    document.getElementById(id).classList.remove("disabled")
-  );
-}
-
-async function descargar(tipo) {
-  window.open(`${API}/download/${tipo}`, "_blank");
 }
 
 // ── Notificaciones ────────────────────────────────────────────────────────────
@@ -472,9 +609,10 @@ async function doLogin() {
     const d = await r.json();
     if (r.ok && d.ok) {
       document.getElementById("login-overlay").classList.add("hidden");
-      // Guardar token en sesión
       window._authToken = d.token;
+      renderPartes();
       verificarEstado();
+      iniciarPolling();
     } else {
       err.textContent = "Usuario o contraseña incorrectos";
       document.getElementById("btn-login").textContent = "Ingresar";
