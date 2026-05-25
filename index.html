@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Conexia SEROS — ISSyS Chubut</title>
+<style>
+  :root {
+    --verde:   #16a34a;
+    --rojo:    #dc2626;
+    --azul:    #2563eb;
+    --gris:    #6b7280;
+    --fondo:   #f8fafc;
+    --blanco:  #ffffff;
+    --borde:   #e2e8f0;
+    --texto:   #1e293b;
+    --sombra:  0 1px 3px rgba(0,0,0,.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--fondo);
+         color: var(--texto); min-height: 100vh; }
+
+  header { background: #1e3a5f; color: white; padding: 1.2rem 2rem;
+           display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1.4rem; font-weight: 600; }
+  header span { font-size: .85rem; opacity: .75; }
+
+  .container { max-width: 900px; margin: 2rem auto; padding: 0 1.5rem; }
+
+  .card { background: var(--blanco); border: 1px solid var(--borde);
+          border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+          box-shadow: var(--sombra); }
+  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem;
+             color: #475569; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Upload */
+  .upload-zone { border: 2px dashed var(--borde); border-radius: 8px;
+                 padding: 2rem; text-align: center; cursor: pointer;
+                 transition: all .2s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--azul);
+                                          background: #eff6ff; }
+  .upload-zone input { display: none; }
+  .upload-zone p { color: var(--gris); font-size: .9rem; margin-top: .5rem; }
+  #upload-status { margin-top: .75rem; font-size: .9rem; font-weight: 500; }
+
+  /* Botón */
+  button { cursor: pointer; border: none; border-radius: 8px;
+           font-size: .95rem; font-weight: 600; padding: .7rem 1.5rem;
+           transition: all .2s; }
+  #btn-run { background: var(--azul); color: white; width: 100%; padding: 1rem;
+             font-size: 1rem; letter-spacing: .02em; }
+  #btn-run:hover:not(:disabled) { background: #1d4ed8; transform: translateY(-1px); }
+  #btn-run:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+
+  /* Métricas */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .metric { text-align: center; padding: 1rem; background: var(--fondo);
+            border-radius: 8px; border: 1px solid var(--borde); }
+  .metric .valor { font-size: 2rem; font-weight: 700; }
+  .metric .label { font-size: .8rem; color: var(--gris); margin-top: .25rem; }
+  .metric.verde .valor { color: var(--verde); }
+  .metric.rojo  .valor { color: var(--rojo); }
+  .metric.azul  .valor { color: var(--azul); }
+
+  /* Estado */
+  .badge { display: inline-flex; align-items: center; gap: .4rem;
+           padding: .3rem .8rem; border-radius: 20px; font-size: .85rem;
+           font-weight: 600; }
+  .badge.idle    { background: #f1f5f9; color: var(--gris); }
+  .badge.running { background: #fef3c7; color: #92400e; }
+  .badge.done    { background: #dcfce7; color: #166534; }
+  .badge.error   { background: #fee2e2; color: #991b1b; }
+
+  /* Progress bar */
+  .progress-bar { height: 6px; background: var(--borde); border-radius: 3px;
+                  overflow: hidden; margin: 1rem 0; }
+  .progress-fill { height: 100%; background: var(--azul); border-radius: 3px;
+                   animation: pulse 1.5s ease-in-out infinite; width: 0%; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* Log */
+  #log-box { background: #0f172a; color: #94a3b8; font-family: 'Consolas', monospace;
+             font-size: .78rem; padding: 1rem; border-radius: 8px; height: 280px;
+             overflow-y: auto; white-space: pre-wrap; line-height: 1.5; }
+  #log-box .ok    { color: #4ade80; }
+  #log-box .error { color: #f87171; }
+  #log-box .warn  { color: #fbbf24; }
+
+  /* Descargas */
+  .downloads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .dl-btn { display: flex; flex-direction: column; align-items: center; gap: .4rem;
+            padding: 1.2rem; border: 2px solid var(--borde); border-radius: 10px;
+            text-decoration: none; color: var(--texto); background: var(--blanco);
+            transition: all .2s; cursor: pointer; font-weight: 600; }
+  .dl-btn:hover { border-color: var(--azul); background: #eff6ff; transform: translateY(-2px); }
+  .dl-btn .icon { font-size: 1.8rem; }
+  .dl-btn .name { font-size: .85rem; }
+  .dl-btn .desc { font-size: .75rem; color: var(--gris); font-weight: 400; }
+  .dl-btn.disabled { opacity: .4; pointer-events: none; }
+
+  /* Notificación toast */
+  #toast { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 9999;
+           background: #166534; color: white; padding: 1rem 1.5rem;
+           border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.2);
+           display: none; font-weight: 600; font-size: .95rem;
+           animation: slideIn .3s ease; max-width: 320px; }
+  #toast.show { display: flex; align-items: center; gap: .75rem; }
+  #toast.error-toast { background: #991b1b; }
+  @keyframes slideIn { from{transform:translateX(120%)} to{transform:translateX(0)} }
+
+  #notif-btn { background: #f1f5f9; color: var(--gris); font-size: .8rem;
+               padding: .4rem .9rem; border: 1px solid var(--borde); }
+  #notif-btn.active { background: #dcfce7; color: var(--verde); border-color: var(--verde); }
+
+  .flex-row { display: flex; align-items: center; justify-content: space-between;
+              flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏥 Bot Conexia SEROS</h1>
+    <span>ISSyS Chubut — Extracción automatizada de facturación</span>
+  </div>
+</header>
+
+<div id="toast"></div>
+
+<div class="container">
+
+  <!-- 1. Credenciales -->
+  <div class="card">
+    <h2>1. Credenciales</h2>
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept=".xlsx">
+      <div style="font-size:2rem">📁</div>
+      <strong>Subir credenciales_seros.xlsx</strong>
+      <p>Hacé clic o arrastrá el archivo aquí</p>
+    </div>
+    <div id="upload-status"></div>
+  </div>
+
+  <!-- 2. Ejecución -->
+  <div class="card">
+    <div class="flex-row">
+      <h2 style="margin-bottom:0">2. Ejecución</h2>
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <span id="estado-badge" class="badge idle">⚪ En espera</span>
+        <button id="notif-btn" onclick="pedirNotificacion()">🔔 Notificarme</button>
+      </div>
+    </div>
+    <button id="btn-run" disabled onclick="iniciarEjecucion()">
+      🚀 Iniciar extracción
+    </button>
+    <div class="progress-bar" id="progress-bar" style="display:none">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="metrics" style="margin-top:1rem">
+      <div class="metric verde"><div class="valor" id="m-ok">—</div><div class="label">Descargados</div></div>
+      <div class="metric rojo"> <div class="valor" id="m-err">—</div><div class="label">Fallidos</div></div>
+      <div class="metric azul"> <div class="valor" id="m-tiempo">—</div><div class="label">Tiempo</div></div>
+    </div>
+  </div>
+
+  <!-- 3. Log -->
+  <div class="card">
+    <h2>3. Log en tiempo real</h2>
+    <div id="log-box">Esperando inicio de ejecución...</div>
+  </div>
+
+  <!-- 4. Descargas -->
+  <div class="card">
+    <h2>4. Resultados</h2>
+    <div class="downloads">
+      <div class="dl-btn disabled" id="dl-excel" onclick="descargar('excel')">
+        <span class="icon">📊</span>
+        <span class="name">Excel consolidado</span>
+        <span class="desc">Detalle + Totalizador</span>
+      </div>
+      <div class="dl-btn disabled" id="dl-pdfs" onclick="descargar('pdfs')">
+        <span class="icon">📦</span>
+        <span class="name">PDFs (ZIP)</span>
+        <span class="desc">Todos los reportes</span>
+      </div>
+      <div class="dl-btn disabled" id="dl-fall" onclick="descargar('fallidos')">
+        <span class="icon">❌</span>
+        <span class="name">Fallidos</span>
+        <span class="desc">Credenciales inválidas</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG — cambiar por la URL real de PikaPods ─────────────────────────────
+const API = (window.API_URL || "https://TU-APP.pikapods.com").replace(/\/$/, "");
+
+// ── Estado ────────────────────────────────────────────────────────────────────
+let pollInterval  = null;
+let notifActiva   = false;
+let tiempoInicio  = null;
+let excelSubido   = false;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  verificarEstado();
+  setupDrop();
+  setupFileInput();
+});
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+function setupFileInput() {
+  document.getElementById("file-input").addEventListener("change", e => {
+    if (e.target.files[0]) subirExcel(e.target.files[0]);
+  });
+}
+
+function setupDrop() {
+  const zone = document.getElementById("drop-zone");
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault(); zone.classList.remove("drag");
+    if (e.dataTransfer.files[0]) subirExcel(e.dataTransfer.files[0]);
+  });
+}
+
+async function subirExcel(file) {
+  const status = document.getElementById("upload-status");
+  status.style.color = "#2563eb";
+  status.textContent = "⏳ Subiendo...";
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    const r = await fetch(`${API}/upload`, { method: "POST", body: fd });
+    const d = await r.json();
+    if (r.ok) {
+      status.style.color = "#16a34a";
+      status.textContent = `✅ ${file.name} cargado — ${d.registros} registros`;
+      excelSubido = true;
+      actualizarBoton();
+    } else {
+      status.style.color = "#dc2626";
+      status.textContent = "❌ Error: " + (d.detail || "desconocido");
+    }
+  } catch(e) {
+    status.style.color = "#dc2626";
+    status.textContent = "❌ No se pudo conectar con el servidor";
+  }
+}
+
+// ── Ejecución ─────────────────────────────────────────────────────────────────
+async function iniciarEjecucion() {
+  try {
+    const r = await fetch(`${API}/run`, { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) { mostrarToast("❌ " + (d.detail || "Error al iniciar"), true); return; }
+    tiempoInicio = Date.now();
+    document.getElementById("progress-bar").style.display = "block";
+    iniciarPolling();
+  } catch(e) {
+    mostrarToast("❌ Sin conexión con el servidor", true);
+  }
+}
+
+// ── Polling ───────────────────────────────────────────────────────────────────
+function iniciarPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(verificarEstado, 4000);
+}
+
+async function verificarEstado() {
+  try {
+    const r = await fetch(`${API}/status`);
+    const d = await r.json();
+    actualizarUI(d);
+    if (d.status === "done" || d.status === "error") {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      if (d.status === "done") {
+        onEjecucionCompleta();
+      } else {
+        mostrarToast("❌ La ejecución terminó con errores", true);
+      }
+    }
+    if (d.excel_ok) { excelSubido = true; actualizarBoton(); }
+  } catch(e) { /* silencioso */ }
+}
+
+function actualizarUI(d) {
+  // Badge
+  const badge = document.getElementById("estado-badge");
+  const badges = { idle:"⚪ En espera", running:"🟡 Ejecutando...", done:"🟢 Completado", error:"🔴 Error" };
+  const clases = { idle:"idle", running:"running", done:"done", error:"error" };
+  badge.className = "badge " + (clases[d.status] || "idle");
+  badge.textContent = badges[d.status] || d.status;
+
+  // Botón
+  actualizarBoton(d.status);
+
+  // Métricas
+  if (d.ok !== undefined)      document.getElementById("m-ok").textContent  = d.ok;
+  if (d.fallidos !== undefined) document.getElementById("m-err").textContent = d.fallidos;
+
+  // Tiempo
+  if (d.status === "running" && tiempoInicio) {
+    const seg = Math.floor((Date.now() - tiempoInicio) / 1000);
+    const min = Math.floor(seg / 60).toString().padStart(2,"0");
+    const s   = (seg % 60).toString().padStart(2,"0");
+    document.getElementById("m-tiempo").textContent = `${min}:${s}`;
+  } else if (d.inicio && d.fin) {
+    const ms  = new Date(d.fin) - new Date(d.inicio);
+    const min = Math.floor(ms/60000).toString().padStart(2,"0");
+    const s   = Math.floor((ms%60000)/1000).toString().padStart(2,"0");
+    document.getElementById("m-tiempo").textContent = `${min}:${s}`;
+  }
+
+  // Log
+  if (d.log_tail && d.log_tail.length) actualizarLog(d.log_tail);
+
+  // Progress bar
+  if (d.status === "done" || d.status === "error") {
+    document.getElementById("progress-fill").style.animation = "none";
+    document.getElementById("progress-fill").style.width = "100%";
+    document.getElementById("progress-fill").style.background =
+      d.status === "done" ? "#16a34a" : "#dc2626";
+  }
+}
+
+function actualizarBoton(status) {
+  const btn = document.getElementById("btn-run");
+  btn.disabled = !excelSubido || status === "running";
+  btn.textContent = status === "running" ? "⏳ Ejecutando..." : "🚀 Iniciar extracción";
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+let logLines = [];
+function actualizarLog(nuevas) {
+  nuevas.forEach(l => {
+    if (!logLines.includes(l)) logLines.push(l);
+  });
+  if (logLines.length > 300) logLines = logLines.slice(-300);
+  const box = document.getElementById("log-box");
+  box.innerHTML = logLines.map(l => {
+    const esc = l.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    if (l.includes("✓") || l.includes("OK"))             return `<span class="ok">${esc}</span>`;
+    if (l.includes("ERROR") || l.includes("Credencial")) return `<span class="error">${esc}</span>`;
+    if (l.includes("WARNING") || l.includes("⚠"))        return `<span class="warn">${esc}</span>`;
+    return esc;
+  }).join("\n");
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Completado ────────────────────────────────────────────────────────────────
+function onEjecucionCompleta() {
+  mostrarToast("✅ Extracción completada. ¡Ya podés descargar los resultados!");
+  habilitarDescargas();
+  notificarNavegador();
+  // Sonido de notificación
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784].forEach((hz, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = hz;
+      g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+      o.start(ctx.currentTime + i * 0.15);
+      o.stop(ctx.currentTime + i * 0.15 + 0.3);
+    });
+  } catch(e) {}
+}
+
+function habilitarDescargas() {
+  ["dl-excel","dl-pdfs","dl-fall"].forEach(id =>
+    document.getElementById(id).classList.remove("disabled")
+  );
+}
+
+async function descargar(tipo) {
+  window.open(`${API}/download/${tipo}`, "_blank");
+}
+
+// ── Notificaciones ────────────────────────────────────────────────────────────
+async function pedirNotificacion() {
+  if (!("Notification" in window)) {
+    alert("Tu navegador no soporta notificaciones."); return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === "granted") {
+    notifActiva = true;
+    const btn = document.getElementById("notif-btn");
+    btn.textContent = "🔔 Notificaciones activas";
+    btn.classList.add("active");
+    mostrarToast("🔔 Te avisaremos cuando termine la ejecución");
+  }
+}
+
+function notificarNavegador() {
+  if (!notifActiva || Notification.permission !== "granted") return;
+  new Notification("✅ Bot Conexia SEROS", {
+    body: "La extracción terminó. Ya podés descargar los resultados.",
+    icon: "https://cdn-icons-png.flaticon.com/512/3004/3004458.png"
+  });
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function mostrarToast(msg, esError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className   = "show" + (esError ? " error-toast" : "");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 6000);
+}
+</script>
+</body>
+</html>
